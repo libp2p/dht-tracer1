@@ -1,0 +1,62 @@
+
+// see vis-events.go
+
+// queries
+[
+  { // Query
+    "QueryID": "<query-id>",
+    "RunnerState": {
+      "PeersSeen": 123,
+      "PeersQueried": 123,
+      "PeersDialed": 123,
+      "PeersToQuery": 123,
+      "PeersRemaining": 123,
+      "Result": ( undefined | {
+        "Success": true,         // optional
+        "FoundPeer": "Qmfoo...", // optional
+        "CloserPeers": 123,      // optional
+        "QueriedPeers": 123,     // optional
+        "FinalPeers": 123,       // optional
+      }),
+      "RateLimit": {
+        "Capacity": 10,
+        "Length": 5,
+      }
+      "StartTime": ISO-Timestamp,
+      "CurrTime": ISO-Timestamp,
+      "EndTime": ISO-Timestamp,
+    }
+    "PeerQueries": [
+      { // PeerQuery
+        "QueryID": "<query-id>",
+        "Order": 1, // order in the query (array index)
+        "PeerID": "Qmfoo...",
+        "XORDistance": [1 - 256],
+        "Hops": [1+],
+        "Spans": [ // events
+          {
+            "Type": "Dial",
+            "Start": ISO-Timestamp,
+            "End": ISO-Timestamp,
+            "Duration": <in-microseconds>,
+          },
+          {
+            "Type": "Request",
+            "Start": ISO-Timestamp,
+            "End": ISO-Timestamp,
+            "Duration": <in-microseconds>,
+          },
+        ],
+        "TotalDuration": <in-microseconds>,
+        "Records": 123, // count of records. optional.
+
+        "CloserPeersRecv": 123,
+        "CloserPeersNew": 123,
+        "ProviderPeersRecv": 123,
+        "ProviderPeersNew": 123,
+      },
+      ...
+    ]
+  },
+  ...
+]
