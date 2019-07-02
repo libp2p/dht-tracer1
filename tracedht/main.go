@@ -4,6 +4,7 @@ import (
   "flag"
   "fmt"
   "os"
+  "time"
 
   dhttracer "github.com/libp2p/dht-tracer1/lib"
   dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -84,6 +85,10 @@ func runTracerServer(addr string) error {
   if err := t.Start(); err != nil {
     return err
   }
+
+  // pause for a bit to let the node bootstrap.
+  // (no nice way to listen for an event yet)
+  time.Sleep(time.Second * 5)
   fmt.Println("dht node routing table:")
   fmt.Println(t.Node.RoutingTable())
 
