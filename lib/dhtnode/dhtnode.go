@@ -9,7 +9,7 @@ import (
 
   levelds "github.com/ipfs/go-ds-leveldb"
   ipfsconfig "github.com/ipfs/go-ipfs-config"
-  ipns "github.com/ipfs/go-ipns"
+  // ipns "github.com/ipfs/go-ipns"
   libp2p "github.com/libp2p/go-libp2p"
   peer "github.com/libp2p/go-libp2p-core/peer"
   host "github.com/libp2p/go-libp2p-host"
@@ -116,8 +116,8 @@ func NewNode() (*Node, error) {
   }
 
   d.Validator = record.NamespacedValidator{
-    "pk":   record.PublicKeyValidator{},
-    "ipns": ipns.Validator{KeyBook: h.Peerstore()},
+    "pk": record.PublicKeyValidator{},
+    // "ipns": ipns.Validator{KeyBook: h.Peerstore()},
   }
 
   // dont need to store it, only mount it
