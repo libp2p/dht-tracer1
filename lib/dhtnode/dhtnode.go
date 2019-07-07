@@ -1,4 +1,4 @@
-package dhttests
+package dhtnode
 
 import (
   "bytes"
@@ -6,17 +6,21 @@ import (
   "fmt"
   "io"
   "math/rand"
+  "strings"
 
   levelds "github.com/ipfs/go-ds-leveldb"
   ipfsconfig "github.com/ipfs/go-ipfs-config"
   // ipns "github.com/ipfs/go-ipns"
+  logging "github.com/ipfs/go-log"
   libp2p "github.com/libp2p/go-libp2p"
+  host "github.com/libp2p/go-libp2p-core/host"
   peer "github.com/libp2p/go-libp2p-core/peer"
-  host "github.com/libp2p/go-libp2p-host"
   dht "github.com/libp2p/go-libp2p-kad-dht"
   record "github.com/libp2p/go-libp2p-record"
   ping "github.com/libp2p/go-libp2p/p2p/protocol/ping"
 )
+
+var log = logging.Logger("tracedhtnode")
 
 var BootstrapAddrsStr = []string{
   "/ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ",  // mars.i.ipfs.io
@@ -30,19 +34,50 @@ var BootstrapAddrsStr = []string{
   // "/ip6/2a03:b0c0:0:1010::23:1001/tcp/4001/ipfs/QmSoLer265NRgSp2LA3dPaeykiS1J6DifTC88f5uVQKNAd", // earth.i.ipfs.io
 }
 
-var BootstrapAddrs []peer.AddrInfo
+var BootstrapAddrs []*peer.AddrInfo
 
 func init() {
-  ais, err := ipfsconfig.ParseBootstrapPeers(BootstrapAddrsStr)
+  ais, err := ParseStrAddrs(BootstrapAddrsStr)
   if err != nil {
     panic(err)
   }
+
   BootstrapAddrs = ais
+}
+
+func ParseStrAddrs(addrs []string) ([]*peer.AddrInfo, error) {
+  // remove garbage
+  var addrs2 []string
+  for _, a := range addrs {
+    if len(a) < 1 {
+      continue
+    }
+    if len(strings.Split(a, "/")) < 4 {
+      continue
+    }
+    addrs2 = append(addrs2, a)
+  }
+
+  ais, err := ipfsconfig.ParseBootstrapPeers(addrs)
+  if err != nil {
+    return nil, err
+  }
+
+  ais2 := make([]*peer.AddrInfo, len(ais))
+  for i, ai := range ais {
+    ais2[i] = &peer.AddrInfo{}
+    *ais2[i] = ai
+  }
+  return ais2, nil
 }
 
 type Node struct {
   Host host.Host
   DHT  *dht.IpfsDHT
+}
+
+func (n *Node) String() string {
+  return n.Host.ID().String()
 }
 
 func (n *Node) ID() peer.ID {
@@ -53,24 +88,41 @@ func (n *Node) Peers() []peer.ID {
   return n.Host.Network().Peers()
 }
 
+func (n *Node) AddrInfo() *peer.AddrInfo {
+  return host.InfoFromHost(n.Host)
+}
+
 func (n *Node) RoutingTable() io.Reader {
   buf := bytes.NewBuffer(nil)
   PrintLatencyTable(buf, n.Host)
   return buf
 }
 
-func Bootstrap(n *Node) error {
+func Bootstrap(n *Node, bootstrap []*peer.AddrInfo) error {
   ctx := context.Background()
 
-  // grab two random bootstrap nodes
-  idx := rand.Intn(len(BootstrapAddrs) - 1)
-  ais := BootstrapAddrs[idx : idx+2]
+  nb := 3 // number to bootstrap to
+  var ais []*peer.AddrInfo
+  for _, i := range rand.Perm(len(bootstrap)) {
+    ais = append(ais, bootstrap[i])
+    if len(ais) >= nb {
+      break
+    }
+  }
+
+  log.Debug("bootstrapping", n.ID(), "to", ais)
 
   for _, ai := range ais {
-    err := n.Host.Connect(ctx, ai)
+    err := n.Host.Connect(ctx, *ai)
     if err != nil {
-      return err
+      log.Error("failed bootstrap:", n.ID(), ai.ID, err)
+    } else {
+      log.Debug("bootstrapped:", n.ID(), ai.ID)
     }
+  }
+
+  if len(n.Peers()) < 1 {
+    return fmt.Errorf("failed to bootstrap %s to any peer", n.ID())
   }
 
   err := n.DHT.Bootstrap(ctx)
@@ -79,33 +131,33 @@ func Bootstrap(n *Node) error {
   }
 
   // go do 5 RTTs
-  for _, p := range n.Peers() {
-    go func(p peer.ID) {
-      ctx, cancel := context.WithCancel(ctx)
-      defer cancel()
-
-      // do 5 RTTs before canceling
-      res := ping.Ping(ctx, n.Host, p)
-      for i := 0; i < 5; i++ {
-        <-res
-      }
-    }(p)
-  }
+  PingPeers(n, 5)
 
   return nil
 }
 
-func NewNode() (*Node, error) {
+func PingPeers(n *Node, rtts int) {
+  for _, p := range n.Peers() {
+    go func(p peer.ID) {
+      ctx, cancel := context.WithCancel(context.Background())
+      defer cancel()
+
+      // do 5 RTTs before canceling
+      res := ping.Ping(ctx, n.Host, p)
+      for i := 0; i < rtts; i++ {
+        <-res
+      }
+    }(p)
+  }
+}
+
+func NewNode(cfg NodeCfg) (*Node, error) {
   ds, err := levelds.NewDatastore("", nil)
   if err != nil {
     return nil, err
   }
 
-  opts := []libp2p.Option{
-    libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0"),
-  }
-
-  h, err := libp2p.New(context.Background(), opts...)
+  h, err := libp2p.New(context.Background(), cfg.Libp2pOpts...)
   if err != nil {
     return nil, err
   }
@@ -118,13 +170,16 @@ func NewNode() (*Node, error) {
   d.Validator = record.NamespacedValidator{
     "pk": record.PublicKeyValidator{},
     // "ipns": ipns.Validator{KeyBook: h.Peerstore()},
+    "v": blankValidator{},
   }
 
   // dont need to store it, only mount it
   _ = ping.NewPingService(h)
-
   n := &Node{h, d}
-  err = Bootstrap(n)
+
+  if len(cfg.Bootstrap) > 0 {
+    err = Bootstrap(n, cfg.Bootstrap)
+  }
   return n, err
 }
 
@@ -136,3 +191,8 @@ func PrintLatencyTable(w io.Writer, h host.Host) {
     fmt.Fprintf(w, "%d %v %v\n", i, p, latency)
   }
 }
+
+type blankValidator struct{}
+
+func (blankValidator) Validate(_ string, _ []byte) error        { return nil }
+func (blankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }

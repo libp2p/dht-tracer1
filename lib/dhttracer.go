@@ -66,15 +66,18 @@ func cmdInGroup(c string, g []string) bool {
 }
 
 type Tracer struct {
-  EventLogs io.ReadWriter
-  Node      *dhtnode.Node
-  ctx       cancelCtx
+  NodeCfg dhtnode.NodeCfg
+
+  Node *dhtnode.Node
+  ctx  cancelCtx
 
   sync.RWMutex
 }
 
-func NewTracer() *Tracer {
-  return &Tracer{}
+func NewTracer(cfg dhtnode.NodeCfg) *Tracer {
+  return &Tracer{
+    NodeCfg: cfg,
+  }
 }
 
 func (t *Tracer) Start() error {
@@ -88,13 +91,15 @@ func (t *Tracer) Start() error {
 
   // create node
   var err error
-  t.Node, err = dhtnode.NewNode()
-  if err == nil {
+  t.Node, err = dhtnode.NewNode(t.NodeCfg)
+  if err != nil {
     return err
   }
 
-  // setup eventlogs to write
-  // TODO
+  err = dhtnode.Bootstrap(t.Node, t.NodeCfg.Bootstrap)
+  if err != nil {
+    return err
+  }
   return nil
 }
 
@@ -180,7 +185,7 @@ func (t *Tracer) RunQuery(cmd Command, key Key, vals ...string) (io.Reader, erro
     }
     return strings.NewReader(ai.String()), nil
   case CmdPing:
-    pid, err := peer.IDFromString(key)
+    pid, err := peer.IDB58Decode(key)
     if err != nil {
       return nil, err
     }

@@ -11,6 +11,7 @@ import (
   "strings"
 
   lwriter "github.com/ipfs/go-log/writer"
+  dhtnode "github.com/libp2p/dht-tracer1/lib/dhtnode"
 )
 
 type HTTPServer struct {
@@ -26,6 +27,7 @@ func NewHTTPServer(t *Tracer, addr string) *HTTPServer {
   s.Mux.HandleFunc("/cmd", s.handleCmd)
   s.Mux.HandleFunc("/events", s.handleEvents)
   s.Mux.HandleFunc("/version", s.handleVersion)
+  s.Mux.HandleFunc("/info/switch", s.handleInfoSwitch)
 
   s.Server.Addr = addr
   s.Server.Handler = s.Mux
@@ -39,6 +41,16 @@ func (s *HTTPServer) ListenAndServe() error {
 func (s *HTTPServer) handleVersion(res http.ResponseWriter, req *http.Request) {
   fmt.Fprintln(os.Stderr, "/version")
   fmt.Fprintf(res, "tracedht version %v\n", Version)
+}
+
+func (s *HTTPServer) handleInfoSwitch(res http.ResponseWriter, req *http.Request) {
+  fmt.Fprintln(os.Stderr, "/switch")
+
+  // ping all peers twice
+  dhtnode.PingPeers(s.Tracer.Node, 2)
+
+  // then print the latency table
+  dhtnode.PrintLatencyTable(res, s.Tracer.Node.Host)
 }
 
 func (s *HTTPServer) handleCmd(res http.ResponseWriter, req *http.Request) {
