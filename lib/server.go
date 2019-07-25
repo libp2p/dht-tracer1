@@ -1,7 +1,7 @@
 package dhttracer
 
 import (
-	"bufio"
+  "bufio"
   "context"
   "errors"
   "fmt"
@@ -36,8 +36,8 @@ func NewHTTPServer(t *Tracer, addr string) *HTTPServer {
 }
 
 func enableCors(w *http.ResponseWriter) {
-	(*w).Header().Set("Access-Control-Allow-Origin", "*")
-	(*w).Header().Set("Content-Type", "text/event-stream")
+  (*w).Header().Set("Access-Control-Allow-Origin", "*")
+  (*w).Header().Set("Content-Type", "text/event-stream")
 }
 
 func (s *HTTPServer) ListenAndServe() error {
@@ -98,11 +98,11 @@ func (s *HTTPServer) handleCmd(res http.ResponseWriter, req *http.Request) {
 }
 
 func (s *HTTPServer) handleEvents(res http.ResponseWriter, req *http.Request) {
-	enableCors(&res)
+  enableCors(&res)
   fmt.Fprintln(os.Stderr, "/events")
 
   r := eventlogReader(req.Context())
-  scanner := bufio.NewScanner(r)
+	scanner := bufio.NewScanner(r)
   for scanner.Scan() {
     fmt.Fprintf(res, "data: %s\n\n", scanner.Text())
   }
