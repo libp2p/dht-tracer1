@@ -102,7 +102,7 @@ func (s *HTTPServer) handleEvents(res http.ResponseWriter, req *http.Request) {
   fmt.Fprintln(os.Stderr, "/events")
 
   r := eventlogReader(req.Context())
-	scanner := bufio.NewScanner(r)
+  scanner := bufio.NewScanner(r)
   for scanner.Scan() {
     fmt.Fprintf(res, "data: %s\n\n", scanner.Text())
   }
