@@ -117,7 +117,7 @@ func parseCmd(line string) (cmd string, args []string, err error) {
   }
 
   args = strings.Split(line, " ")
-  if len(args) < 2 {
+  if (args[0] != "reset") && args[0] != "exit" && len(args) < 2 {
     return "", nil, errors.New("command format: <command> <arg>...")
   }
 
