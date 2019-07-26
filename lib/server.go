@@ -60,7 +60,7 @@ func (s *HTTPServer) handleInfoSwitch(res http.ResponseWriter, req *http.Request
 }
 
 func (s *HTTPServer) handleCmd(res http.ResponseWriter, req *http.Request) {
-
+  enableCors(&res)
   // parse form
   if err := req.ParseForm(); err != nil {
     http.Error(res, fmt.Sprint(err), http.StatusBadRequest)
