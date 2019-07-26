@@ -35,9 +35,9 @@ func NewHTTPServer(t *Tracer, addr string) *HTTPServer {
   return s
 }
 
-func enableCors(w *http.ResponseWriter) {
-  (*w).Header().Set("Access-Control-Allow-Origin", "*")
-  (*w).Header().Set("Content-Type", "text/event-stream")
+func enableCors(w http.ResponseWriter) {
+  w.Header().Set("Access-Control-Allow-Origin", "*")
+  w.Header().Set("Content-Type", "text/event-stream")
 }
 
 func (s *HTTPServer) ListenAndServe() error {
@@ -60,7 +60,7 @@ func (s *HTTPServer) handleInfoSwitch(res http.ResponseWriter, req *http.Request
 }
 
 func (s *HTTPServer) handleCmd(res http.ResponseWriter, req *http.Request) {
-  enableCors(&res)
+  enableCors(res)
   // parse form
   if err := req.ParseForm(); err != nil {
     http.Error(res, fmt.Sprint(err), http.StatusBadRequest)
@@ -98,13 +98,16 @@ func (s *HTTPServer) handleCmd(res http.ResponseWriter, req *http.Request) {
 }
 
 func (s *HTTPServer) handleEvents(res http.ResponseWriter, req *http.Request) {
-  enableCors(&res)
+  enableCors(res)
   fmt.Fprintln(os.Stderr, "/events")
 
   r := eventlogReader(req.Context())
   scanner := bufio.NewScanner(r)
   for scanner.Scan() {
     fmt.Fprintf(res, "data: %s\n\n", scanner.Text())
+  }
+  if err := scanner.Err(); err != nil {
+    fmt.Fprintln(os.Stderr, "reading standard input:", err)
   }
 }
 
@@ -117,7 +120,7 @@ func parseCmd(line string) (cmd string, args []string, err error) {
   }
 
   args = strings.Split(line, " ")
-  if (args[0] != "reset") && args[0] != "exit" && len(args) < 2 {
+  if len(args) < 2 && len(args) > 0 && args[0] != "reset" && args[0] != "exit" {
     return "", nil, errors.New("command format: <command> <arg>...")
   }
 
