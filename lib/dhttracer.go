@@ -1,53 +1,53 @@
 package dhttracer
 
 import (
-  "bytes"
-  "context"
-  "fmt"
-  "io"
-  "strings"
-  "sync"
-  "time"
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"strings"
+	"sync"
+	"time"
 
-  cid "github.com/ipfs/go-cid"
-  dhtnode "github.com/libp2p/dht-tracer1/lib/dhtnode"
-  peer "github.com/libp2p/go-libp2p-core/peer"
+	cid "github.com/ipfs/go-cid"
+	dhtnode "github.com/libp2p/dht-tracer1/lib/dhtnode"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 var Version = "1.0.0"
 
 type cancelCtx struct {
-  context.Context
+	context.Context
 
-  cancel context.CancelFunc
+	cancel context.CancelFunc
 }
 
 type Command = string
 type Key = string
 
 var (
-  CmdExit         = "exit"
-  CmdReset        = "reset"
-  CmdPutValue     = "put-value"
-  CmdGetValue     = "get-value"
-  CmdAddProvider  = "add-provider"
-  CmdGetProviders = "get-providers"
-  CmdFindPeer     = "find-peer"
-  CmdPing         = "ping"
+	CmdExit         = "exit"
+	CmdReset        = "reset"
+	CmdPutValue     = "put-value"
+	CmdGetValue     = "get-value"
+	CmdAddProvider  = "add-provider"
+	CmdGetProviders = "get-providers"
+	CmdFindPeer     = "find-peer"
+	CmdPing         = "ping"
 )
 
 var CtrlCmds = []string{
-  CmdExit,
-  CmdReset,
+	CmdExit,
+	CmdReset,
 }
 
 var QueryCmds = []string{
-  CmdPutValue,
-  CmdGetValue,
-  CmdAddProvider,
-  CmdGetProviders,
-  CmdFindPeer,
-  CmdPing,
+	CmdPutValue,
+	CmdGetValue,
+	CmdAddProvider,
+	CmdGetProviders,
+	CmdFindPeer,
+	CmdPing,
 }
 
 var AllCmds = append(QueryCmds, CtrlCmds...)
@@ -57,158 +57,170 @@ var AllCmds = append(QueryCmds, CtrlCmds...)
 // }
 
 func cmdInGroup(c string, g []string) bool {
-  for _, s := range g {
-    if c == s {
-      return true
-    }
-  }
-  return false
+	for _, s := range g {
+		if c == s {
+			return true
+		}
+	}
+	return false
 }
 
 type Tracer struct {
-  NodeCfg dhtnode.NodeCfg
+	NodeCfg dhtnode.NodeCfg
 
-  Node *dhtnode.Node
-  ctx  cancelCtx
+	Node *dhtnode.Node
+	ctx  cancelCtx
 
-  sync.RWMutex
+	sync.RWMutex
 }
 
 func NewTracer(cfg dhtnode.NodeCfg) *Tracer {
-  return &Tracer{
-    NodeCfg: cfg,
-  }
+	return &Tracer{
+		NodeCfg: cfg,
+	}
 }
 
 func (t *Tracer) Start() error {
-  t.Lock()
-  defer t.Unlock()
+	t.Lock()
+	defer t.Unlock()
 
-  // setup the dht node's context
-  ctx, cancel := context.WithCancel(context.Background())
-  t.ctx.Context = ctx
-  t.ctx.cancel = cancel
+	// setup the dht node's context
+	ctx, cancel := context.WithCancel(context.Background())
+	t.ctx.Context = ctx
+	t.ctx.cancel = cancel
 
-  // create node
-  var err error
-  t.Node, err = dhtnode.NewNode(t.NodeCfg)
-  if err != nil {
-    return err
-  }
+	// create node
+	var err error
+	t.Node, err = dhtnode.NewNode(t.NodeCfg)
+	if err != nil {
+		fmt.Printf("err creating new node:\n%v", err)
+		return err
+	}
 
-  err = dhtnode.Bootstrap(t.Node, t.NodeCfg.Bootstrap)
-  if err != nil {
-    return err
-  }
-  return nil
+	err = dhtnode.Bootstrap(t.Node, t.NodeCfg.Bootstrap)
+	if err != nil {
+		fmt.Printf("err bootstrapping:\n%v", err)
+		return err
+	}
+	return nil
 }
 
 func (t *Tracer) Stop() {
-  panic("not yet implemented")
-  // t.Lock()
-  // defer t.Unlock()
+	panic("not yet implemented")
+	// t.Lock()
+	// defer t.Unlock()
 
-  // if t.ctx.cancel != nil {
-  //   t.ctx.cancel()
-  //   t.ctx.cancel = nil
-  // }
+	// if t.ctx.cancel != nil {
+	//   t.ctx.cancel()
+	//   t.ctx.cancel = nil
+	// }
 
-  // stop node
-  // delete node
+	// stop node
+	// delete node
 }
 
 func (t *Tracer) RunQuery(cmd Command, key Key, vals ...string) (io.Reader, error) {
-  t.RLock()
-  defer t.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 
-  ctx, cancel := context.WithCancel(t.ctx)
-  defer cancel()
+	ctx, cancel := context.WithCancel(t.ctx)
+	defer cancel()
 
-  if len(key) < 1 {
-    return nil, fmt.Errorf("Please enter a Key")
-  }
+	if len(key) < 1 {
+		return nil, fmt.Errorf("Please enter a Key")
+	}
 
-  // run query on node, return the result or closer peers.
-  switch cmd {
-  case CmdPutValue:
-    if len(vals) < 1 {
-      return nil, fmt.Errorf("PutValue takes in 1 argument")
-    }
-    err := t.Node.DHT.PutValue(ctx, key, []byte(vals[0]))
-    if err != nil {
-      return nil, err
-    }
-    s := fmt.Sprintf("put %v %v", key, vals[0])
-    return strings.NewReader(s), nil
-  case CmdGetValue:
-    val, err := t.Node.DHT.GetValue(ctx, key)
-    if err != nil {
-      return nil, err
-    }
-    return bytes.NewReader(val), nil
-  case CmdAddProvider:
-    c, err := cid.Decode(key)
-    if err != nil {
-      return nil, err
-    }
-    err = t.Node.DHT.Provide(ctx, c, true)
-    if err != nil {
-      return nil, err
-    }
-    s := fmt.Sprintf("added self as provider for %v", key)
-    return strings.NewReader(s), nil
-  case CmdGetProviders:
-    c, err := cid.Decode(key)
-    if err != nil {
-      return nil, err
-    }
-    pvs := t.Node.DHT.FindProvidersAsync(ctx, c, 10)
-    pr, pw := io.Pipe()
-    go func() {
-      for {
-        pv, ok := <-pvs // should respect context
-        if !ok {        // channel closed
-          return
-        }
-        pw.Write([]byte(pv.ID.String())) //TODO handle write err?
-      }
-    }()
-    return pr, nil
-  case CmdFindPeer:
-    pid, err := peer.IDB58Decode(key)
-    if err != nil {
-      return nil, err
-    }
-    ai, err := t.Node.DHT.FindPeer(ctx, pid)
-    if err != nil {
-      return nil, err
-    }
-    return strings.NewReader(ai.String()), nil
-  case CmdPing:
-    pid, err := peer.IDB58Decode(key)
-    if err != nil {
-      return nil, err
-    }
-    t1 := time.Now()
-    err = t.Node.DHT.Ping(ctx, pid)
-    if err != nil {
-      return nil, err
-    }
-    d := time.Since(t1)
-    s := fmt.Sprintf("ping time: %v", d)
-    return strings.NewReader(s), nil
-  default:
-    return nil, fmt.Errorf("unknown command")
-  }
+	// run query on node, return the result or closer peers.
+	switch cmd {
+	case CmdPutValue:
+		if len(vals) < 1 {
+			return nil, fmt.Errorf("PutValue takes in 1 argument")
+		}
+		err := t.Node.DHT.PutValue(ctx, key, []byte(vals[0]))
+		if err != nil {
+			fmt.Printf("err putting value to dht:\n%v", err)
+			return nil, err
+		}
+		s := fmt.Sprintf("put %v %v", key, vals[0])
+		return strings.NewReader(s), nil
+	case CmdGetValue:
+		val, err := t.Node.DHT.GetValue(ctx, key)
+		if err != nil {
+			fmt.Printf("err getting value from dht:\n%v", err)
+			return nil, err
+		}
+		return bytes.NewReader(val), nil
+	case CmdAddProvider:
+		c, err := cid.Decode(key)
+		if err != nil {
+			fmt.Printf("err decoding cid:\n%v", err)
+			return nil, err
+		}
+		err = t.Node.DHT.Provide(ctx, c, true)
+		if err != nil {
+			fmt.Printf("err providing dht:\n%v", err)
+			return nil, err
+		}
+		s := fmt.Sprintf("added self as provider for %v", key)
+		return strings.NewReader(s), nil
+	case CmdGetProviders:
+		c, err := cid.Decode(key)
+		if err != nil {
+			fmt.Printf("err decoding cid:\n%v", err)
+			return nil, err
+		}
+		pvs := t.Node.DHT.FindProvidersAsync(ctx, c, 10)
+		pr, pw := io.Pipe()
+		go func() {
+			for {
+				pv, ok := <-pvs // should respect context
+				if !ok {        // channel closed
+					return
+				}
+				pw.Write([]byte(pv.ID.String())) //TODO handle write err?
+			}
+		}()
+		return pr, nil
+	case CmdFindPeer:
+		pid, err := peer.IDB58Decode(key)
+		if err != nil {
+			fmt.Printf("err decoding:\n%v", err)
+			return nil, err
+		}
+		ai, err := t.Node.DHT.FindPeer(ctx, pid)
+		if err != nil {
+			fmt.Printf("err finding peer:\n%v", err)
+			return nil, err
+		}
+		return strings.NewReader(ai.String()), nil
+	case CmdPing:
+		pid, err := peer.IDB58Decode(key)
+		if err != nil {
+			fmt.Printf("err decoding:\n%v", err)
+			return nil, err
+		}
+		t1 := time.Now()
+		err = t.Node.DHT.Ping(ctx, pid)
+		if err != nil {
+			fmt.Printf("err pinging:\n%v", err)
+			return nil, err
+		}
+		d := time.Since(t1)
+		s := fmt.Sprintf("ping time: %v", d)
+		return strings.NewReader(s), nil
+	default:
+		return nil, fmt.Errorf("unknown command")
+	}
 }
 
 func (t *Tracer) Reset() (io.Reader, error) {
-  // t.Stop()
-  err := t.Start()
-  if err != nil {
-    return nil, err
-  }
-  return strings.NewReader("restarted"), nil
+	// t.Stop()
+	err := t.Start()
+	if err != nil {
+		fmt.Printf("err resetting:\n%v", err)
+		return nil, err
+	}
+	return strings.NewReader("restarted"), nil
 }
 
 // func (t *Tracer) Repl(rw io.ReadWriter) {
