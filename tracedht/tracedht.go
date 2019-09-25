@@ -60,13 +60,13 @@ EXAMPLES
 
     # server example
     tracedht --serve :8080 &
-    curl "http://localhost:8080/cmd?q=put-value+foo+bar"
+  curl "http://localhost:7000/cmd?q=put-value+/v/hello+world"
     curl "http://localhost:8080/cmd?q=find-peer+<peer-id>"
 
     # save event logs
     tracedht --serve :8080 &
     curl "http://localhost:8080/events" | grep dht >eventlogs
-    curl "http://localhost:8080/cmd?q=put-value+foo+bar"
+  curl "http://localhost:7000/cmd?q=put-value+/v/hello+world"
 `
 
 type Opts struct {
@@ -109,6 +109,7 @@ func setupTracer(cfg dhtnode.NodeCfg) (*dhttracer.Tracer, error) {
   t := dhttracer.NewTracer(cfg)
   fmt.Println("dht node starting...")
   if err := t.Start(); err != nil {
+    fmt.Printf("err starting tracer:\n%v", err)
     return nil, err
   }
 
@@ -128,6 +129,7 @@ func runTracerServer(t *dhttracer.Tracer, addr string) error {
 
 func nodeCfgWithOpts(opts Opts) dhtnode.NodeCfg {
   cfg := dhtnode.DefaultNodeCfg()
+
   cfg.Bootstrap = opts.BootstrapAddrs
 
   if opts.Quic {
@@ -140,6 +142,7 @@ func nodeCfgWithOpts(opts Opts) dhtnode.NodeCfg {
 func errMain() error {
   opts, _, err := parseOpts()
   if err != nil {
+    fmt.Printf("err parsing option:\n%v", err)
     return err
   }
 
@@ -160,6 +163,7 @@ func errMain() error {
   // setup tracer
   t, err := setupTracer(cfg)
   if err != nil {
+    fmt.Printf("err setting up tracer:\n%v", err)
     return err
   }
 

@@ -28,10 +28,11 @@ var BootstrapAddrsStr = []string{
   "/ip4/128.199.219.111/tcp/4001/ipfs/QmSoLSafTMBsPKadTEgaXctDQVcqN88CNLHXMkTNwMKPnu", // saturn.i.ipfs.io
   "/ip4/104.236.76.40/tcp/4001/ipfs/QmSoLV4Bbm51jM9C4gDYZQ9Cy3U6aXMJDAbzgu2fzaDs64",   // venus.i.ipfs.io
   "/ip4/178.62.158.247/tcp/4001/ipfs/QmSoLer265NRgSp2LA3dPaeykiS1J6DifTC88f5uVQKNAd",  // earth.i.ipfs.io
-  // "/ip6/2604:a880:1:20::203:d001/tcp/4001/ipfs/QmSoLPppuBtQSGwKDZT2M73ULpjvfd3aZ6ha4oFGL1KrGM",  // pluto.i.ipfs.io
-  // "/ip6/2400:6180:0:d0::151:6001/tcp/4001/ipfs/QmSoLSafTMBsPKadTEgaXctDQVcqN88CNLHXMkTNwMKPnu",  // saturn.i.ipfs.io
-  // "/ip6/2604:a880:800:10::4a:5001/tcp/4001/ipfs/QmSoLV4Bbm51jM9C4gDYZQ9Cy3U6aXMJDAbzgu2fzaDs64", // venus.i.ipfs.io
-  // "/ip6/2a03:b0c0:0:1010::23:1001/tcp/4001/ipfs/QmSoLer265NRgSp2LA3dPaeykiS1J6DifTC88f5uVQKNAd", // earth.i.ipfs.io
+  //
+  //"/ip6/2604:a880:1:20::203:d001/tcp/4001/ipfs/QmSoLPppuBtQSGwKDZT2M73ULpjvfd3aZ6ha4oFGL1KrGM",  // pluto.i.ipfs.io
+  //"/ip6/2400:6180:0:d0::151:6001/tcp/4001/ipfs/QmSoLSafTMBsPKadTEgaXctDQVcqN88CNLHXMkTNwMKPnu",  // saturn.i.ipfs.io
+  //"/ip6/2604:a880:800:10::4a:5001/tcp/4001/ipfs/QmSoLV4Bbm51jM9C4gDYZQ9Cy3U6aXMJDAbzgu2fzaDs64", // venus.i.ipfs.io
+  //"/ip6/2a03:b0c0:0:1010::23:1001/tcp/4001/ipfs/QmSoLer265NRgSp2LA3dPaeykiS1J6DifTC88f5uVQKNAd", // earth.i.ipfs.io
 }
 
 var BootstrapAddrs []*peer.AddrInfo
@@ -101,7 +102,7 @@ func (n *Node) RoutingTable() io.Reader {
 func Bootstrap(n *Node, bootstrap []*peer.AddrInfo) error {
   ctx := context.Background()
 
-  nb := 3 // number to bootstrap to
+  nb := 5 // number to bootstrap to
   var ais []*peer.AddrInfo
   for _, i := range rand.Perm(len(bootstrap)) {
     ais = append(ais, bootstrap[i])
@@ -127,6 +128,7 @@ func Bootstrap(n *Node, bootstrap []*peer.AddrInfo) error {
 
   err := n.DHT.Bootstrap(ctx)
   if err != nil {
+    fmt.Printf("err bootstrapping:\n%v", err)
     return err
   }
 
@@ -154,16 +156,19 @@ func PingPeers(n *Node, rtts int) {
 func NewNode(cfg NodeCfg) (*Node, error) {
   ds, err := levelds.NewDatastore("", nil)
   if err != nil {
+    fmt.Printf("err creating new datastore:\n%v", err)
     return nil, err
   }
 
   h, err := libp2p.New(context.Background(), cfg.Libp2pOpts...)
   if err != nil {
+    fmt.Printf("err creating new libptp:\n%v", err)
     return nil, err
   }
 
   d := dht.NewDHT(context.Background(), h, ds)
   if err != nil {
+    fmt.Printf("err creating new dht:\n%v", err)
     return nil, err
   }
 

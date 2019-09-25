@@ -111,6 +111,7 @@ func AddrInfosToP2pAddrs(ais []*peer.AddrInfo) ([]ma.Multiaddr, error) {
   for _, ai := range ais {
     a, err := peer.AddrInfoToP2pAddrs(ai)
     if err != nil {
+      log.Error(err)
       return nil, err
     }
 

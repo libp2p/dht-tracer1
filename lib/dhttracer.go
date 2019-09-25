@@ -93,11 +93,13 @@ func (t *Tracer) Start() error {
   var err error
   t.Node, err = dhtnode.NewNode(t.NodeCfg)
   if err != nil {
+    fmt.Printf("err creating new node:\n%v", err)
     return err
   }
 
   err = dhtnode.Bootstrap(t.Node, t.NodeCfg.Bootstrap)
   if err != nil {
+    fmt.Printf("err bootstrapping:\n%v", err)
     return err
   }
   return nil
@@ -136,6 +138,7 @@ func (t *Tracer) RunQuery(cmd Command, key Key, vals ...string) (io.Reader, erro
     }
     err := t.Node.DHT.PutValue(ctx, key, []byte(vals[0]))
     if err != nil {
+      fmt.Printf("err putting value to dht:\n%v", err)
       return nil, err
     }
     s := fmt.Sprintf("put %v %v", key, vals[0])
@@ -143,16 +146,19 @@ func (t *Tracer) RunQuery(cmd Command, key Key, vals ...string) (io.Reader, erro
   case CmdGetValue:
     val, err := t.Node.DHT.GetValue(ctx, key)
     if err != nil {
+      fmt.Printf("err getting value from dht:\n%v", err)
       return nil, err
     }
     return bytes.NewReader(val), nil
   case CmdAddProvider:
     c, err := cid.Decode(key)
     if err != nil {
+      fmt.Printf("err decoding cid:\n%v", err)
       return nil, err
     }
     err = t.Node.DHT.Provide(ctx, c, true)
     if err != nil {
+      fmt.Printf("err providing dht:\n%v", err)
       return nil, err
     }
     s := fmt.Sprintf("added self as provider for %v", key)
@@ -160,6 +166,7 @@ func (t *Tracer) RunQuery(cmd Command, key Key, vals ...string) (io.Reader, erro
   case CmdGetProviders:
     c, err := cid.Decode(key)
     if err != nil {
+      fmt.Printf("err decoding cid:\n%v", err)
       return nil, err
     }
     pvs := t.Node.DHT.FindProvidersAsync(ctx, c, 10)
@@ -177,21 +184,25 @@ func (t *Tracer) RunQuery(cmd Command, key Key, vals ...string) (io.Reader, erro
   case CmdFindPeer:
     pid, err := peer.IDB58Decode(key)
     if err != nil {
+      fmt.Printf("err decoding:\n%v", err)
       return nil, err
     }
     ai, err := t.Node.DHT.FindPeer(ctx, pid)
     if err != nil {
+      fmt.Printf("err finding peer:\n%v", err)
       return nil, err
     }
     return strings.NewReader(ai.String()), nil
   case CmdPing:
     pid, err := peer.IDB58Decode(key)
     if err != nil {
+      fmt.Printf("err decoding:\n%v", err)
       return nil, err
     }
     t1 := time.Now()
     err = t.Node.DHT.Ping(ctx, pid)
     if err != nil {
+      fmt.Printf("err pinging:\n%v", err)
       return nil, err
     }
     d := time.Since(t1)
@@ -206,6 +217,7 @@ func (t *Tracer) Reset() (io.Reader, error) {
   // t.Stop()
   err := t.Start()
   if err != nil {
+    fmt.Printf("err resetting:\n%v", err)
     return nil, err
   }
   return strings.NewReader("restarted"), nil

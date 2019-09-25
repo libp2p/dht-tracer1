@@ -1,0 +1,5 @@
+*.swp
+*.bin/
+
+logs.txt
+vendor/*
