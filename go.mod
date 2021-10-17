@@ -1,6 +1,6 @@
 module github.com/libp2p/dht-tracer1
 
-go 1.12
+go 1.16
 
 require (
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
