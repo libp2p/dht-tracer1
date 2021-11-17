@@ -18,7 +18,6 @@ type QueryRunnerState struct {
   PeersDialed    int
   PeersToQuery   int
   PeersRemaining int
-  Result         int // number of records
   RateLimit      RateLimit
   Result         QueryResult
   StartTime      string
