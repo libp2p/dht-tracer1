@@ -1,3 +1,3 @@
 module github.com/libp2p/dht-tracer1/datafmts
 
-go 1.17
+go 1.18
