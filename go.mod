@@ -1,6 +1,6 @@
 module github.com/libp2p/dht-tracer1
 
-go 1.17
+go 1.18
 
 require (
 	github.com/ipfs/go-cid v0.0.7
