@@ -10,6 +10,7 @@ import (
 
 	levelds "github.com/ipfs/go-ds-leveldb"
 	ipfsconfig "github.com/ipfs/go-ipfs-config"
+
 	// ipns "github.com/ipfs/go-ipns"
 	logging "github.com/ipfs/go-log"
 	libp2p "github.com/libp2p/go-libp2p"
