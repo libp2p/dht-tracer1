@@ -2,7 +2,6 @@ module github.com/libp2p/dht-tracer1
 
 go 1.21
 
-
 require (
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-ds-leveldb v0.4.2
